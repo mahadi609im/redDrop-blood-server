@@ -124,6 +124,21 @@ async function run() {
       }
     });
 
+    // 2️⃣ All Donation Requests (Admin + Volunteer)
+    app.get('/donationRequests', verifyFBToken, verifyAV, async (req, res) => {
+      try {
+        const cursor = donationRequestsCollection
+          .find({})
+          .sort({ createdAt: -1 });
+        const allRequests = await cursor.toArray();
+
+        res.send(allRequests);
+      } catch (err) {
+        console.error(err);
+        res.status(500).send({ message: 'Server Error' });
+      }
+    });
+
     // Send a ping to confirm a successful connection
     await client.db('admin').command({ ping: 1 });
     console.log(
