@@ -405,6 +405,59 @@ async function run() {
       }
     });
 
+    // PATCH /users/status/:id
+    app.patch(
+      '/users/status/:id',
+      verifyFBToken,
+      verifyAdmin,
+      async (req, res) => {
+        const { id } = req.params;
+        const { status } = req.body;
+
+        try {
+          const result = await usersCollection.updateOne(
+            { _id: new ObjectId(id) },
+            { $set: { status } }
+          );
+
+          const updatedUser = await usersCollection.findOne({
+            _id: new ObjectId(id),
+          });
+          res.json(updatedUser);
+        } catch (err) {
+          console.error(err);
+          res.status(500).json({ message: 'Server Error' });
+        }
+      }
+    );
+
+    // PATCH /users/role/:id
+    app.patch(
+      '/users/:id/role',
+      verifyFBToken,
+      verifyAdmin,
+      async (req, res) => {
+        const { id } = req.params;
+        const { role } = req.body; // 'admin', 'volunteer', 'donor'
+        const { ObjectId } = require('mongodb');
+
+        try {
+          const result = await usersCollection.updateOne(
+            { _id: new ObjectId(id) },
+            { $set: { role } }
+          );
+
+          const updatedUser = await usersCollection.findOne({
+            _id: new ObjectId(id),
+          });
+          res.json(updatedUser);
+        } catch (err) {
+          console.error(err);
+          res.status(500).json({ message: 'Server Error' });
+        }
+      }
+    );
+
     // Send a ping to confirm a successful connection
     await client.db('admin').command({ ping: 1 });
     console.log(
