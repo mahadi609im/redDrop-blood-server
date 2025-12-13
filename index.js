@@ -92,6 +92,20 @@ async function run() {
       res.send(donors);
     });
 
+    app.get('/donationRequests/pending', async (req, res) => {
+      try {
+        const pendingRequests = await donationRequestsCollection
+          .find({ status: 'pending' })
+          .sort({ createdAt: -1 })
+          .toArray();
+
+        res.send(pendingRequests);
+      } catch (err) {
+        console.error(err);
+        res.status(500).send({ message: 'Server Error' });
+      }
+    });
+
     // Send a ping to confirm a successful connection
     await client.db('admin').command({ ping: 1 });
     console.log(
