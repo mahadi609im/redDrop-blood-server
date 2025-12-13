@@ -311,6 +311,24 @@ async function run() {
       res.send(result);
     });
 
+    // users collection
+    app.get('/users', async (req, res) => {
+      const { email } = req.query;
+      const query = {};
+
+      if (email) {
+        // if (email !== req.decoded_email) {
+        //   return res.status(403).send({ message: 'forbidden access' });
+        // }
+        query.email = email; // এখানে MongoDB query এ email add করো
+      }
+
+      const sortFields = { createdAt: -1 };
+      const cursor = usersCollection.find(query).sort(sortFields);
+      const allValues = await cursor.toArray();
+      res.send(allValues);
+    });
+
     // Send a ping to confirm a successful connection
     await client.db('admin').command({ ping: 1 });
     console.log(
