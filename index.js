@@ -79,19 +79,18 @@ async function run() {
 
       next();
     };
-    // app.get('/donors', async (req, res) => {
-    //   const { bloodGroup, district, upazila } = req.query;
 
-    //   const query = {
-    //     bloodGroup,
-    //     district,
-    //     upazila,
-    //     role: 'donor',
-    //   };
+    app.get('/donors', async (req, res) => {
+      const { bloodGroup, district, upazila } = req.query;
+      const query = { role: 'donor' };
 
-    //   const donors = await usersCollection.find(query).toArray();
-    //   res.send(donors);
-    // });
+      if (bloodGroup) query.bloodGroup = bloodGroup;
+      if (district) query.district = district;
+      if (upazila) query.upazila = upazila;
+
+      const donors = await usersCollection.find(query).toArray();
+      res.send(donors);
+    });
 
     // Send a ping to confirm a successful connection
     await client.db('admin').command({ ping: 1 });
