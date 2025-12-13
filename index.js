@@ -291,6 +291,26 @@ async function run() {
       res.send(result);
     });
 
+    // Update donation request info
+    app.patch('/donationRequests/:id', async (req, res) => {
+      const id = req.params.id;
+      const updates = req.body;
+
+      const allowedStatuses = ['pending', 'inprogress', 'done', 'canceled'];
+      if (updates.status && !allowedStatuses.includes(updates.status)) {
+        return res.status(400).send({ message: 'Invalid status value' });
+      }
+
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = { $set: updates };
+
+      const result = await donationRequestsCollection.updateOne(
+        filter,
+        updateDoc
+      );
+      res.send(result);
+    });
+
     // Send a ping to confirm a successful connection
     await client.db('admin').command({ ping: 1 });
     console.log(
