@@ -329,6 +329,33 @@ async function run() {
       res.send(allValues);
     });
 
+    // app.get('/users/:id', async (req, res) => {});
+
+    app.get('/users/:email/role', async (req, res) => {
+      const email = req.params.email;
+      const query = { email };
+      const user = await usersCollection.findOne(query);
+      res.send({ role: user?.role || 'donor' });
+    });
+
+    // GET /users/:email/status
+    app.get('/users/:email/status', async (req, res) => {
+      try {
+        const email = req.params.email;
+        const query = { email };
+        const user = await usersCollection.findOne(query);
+
+        if (!user) {
+          return res.status(404).send({ message: 'User not found' });
+        }
+
+        res.send({ status: user.status || 'active' }); // default active
+      } catch (err) {
+        console.error(err);
+        res.status(500).send({ message: 'Server error' });
+      }
+    });
+
     // Send a ping to confirm a successful connection
     await client.db('admin').command({ ping: 1 });
     console.log(
