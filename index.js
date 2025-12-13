@@ -371,6 +371,40 @@ async function run() {
       res.send(result);
     });
 
+    // PATCH /users/profile → Update user profile using email
+    app.patch('/users/profile', verifyFBToken, async (req, res) => {
+      try {
+        const userEmail = req.decoded_email;
+
+        const { displayName, district, upazila, bloodGroup, photoURL } =
+          req.body;
+
+        const updateFields = {};
+        if (displayName) updateFields.displayName = displayName;
+        if (district) updateFields.district = district;
+        if (upazila) updateFields.upazila = upazila;
+        if (bloodGroup) updateFields.bloodGroup = bloodGroup;
+        if (photoURL) updateFields.photoURL = photoURL;
+
+        const result = await usersCollection.updateOne(
+          { email: userEmail },
+          { $set: updateFields }
+        );
+
+        if (result.modifiedCount === 0) {
+          return res
+            .status(404)
+            .json({ message: 'User not found or unchanged' });
+        }
+
+        const updatedUser = await usersCollection.findOne({ email: userEmail });
+        res.json(updatedUser);
+      } catch (error) {
+        console.error('Profile update error:', error);
+        res.status(500).json({ message: 'Server error' });
+      }
+    });
+
     // Send a ping to confirm a successful connection
     await client.db('admin').command({ ping: 1 });
     console.log(
