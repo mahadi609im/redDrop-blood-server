@@ -139,6 +139,37 @@ async function run() {
       }
     });
 
+    // 3️⃣ Get single donation request by id (any logged-in user)
+    app.get('/donationRequests/:id', async (req, res) => {
+      try {
+        const id = req.params.id;
+
+        if (!ObjectId.isValid(id)) {
+          return res.status(400).send({ message: 'Invalid ID' });
+        }
+
+        const query = { _id: new ObjectId(id) };
+        const request = await donationRequestsCollection.findOne(query);
+
+        if (!request) return res.status(404).send({ message: 'Not Found' });
+
+        if (request.requesterEmail !== req.decoded_email) {
+          const user = await usersCollection.findOne({
+            email: req.decoded_email,
+          });
+
+          if (user?.role === 'donor') {
+            return res.status(403).send({ message: 'Forbidden' });
+          }
+        }
+
+        res.send(request);
+      } catch (err) {
+        console.error(err);
+        res.status(500).send({ message: 'Server Error' });
+      }
+    });
+
     // Send a ping to confirm a successful connection
     await client.db('admin').command({ ping: 1 });
     console.log(
