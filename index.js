@@ -269,6 +269,28 @@ async function run() {
       res.send(result);
     });
 
+    app.patch('/donationRequests/:id/status', async (req, res) => {
+      const id = req.params.id;
+      const { status, donor } = req.body;
+
+      const filter = { _id: new ObjectId(id) };
+
+      const update = {
+        $set: { status },
+      };
+
+      // যদি inprogress হলে donor info add করো
+      if (status === 'inprogress' && donor) {
+        update.$set.donor = {
+          name: donor.name,
+          email: donor.email,
+        };
+      }
+
+      const result = await donationRequestsCollection.updateOne(filter, update);
+      res.send(result);
+    });
+
     // Send a ping to confirm a successful connection
     await client.db('admin').command({ ping: 1 });
     console.log(
