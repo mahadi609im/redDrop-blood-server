@@ -232,6 +232,35 @@ async function run() {
       }
     });
 
+    app.post('/donationRequests', async (req, res) => {
+      const data = req.body;
+
+      const donationRequest = {
+        requesterName: data.requesterName,
+        requesterEmail: data.requesterEmail,
+        recipientName: data.recipientName,
+        district: data.district,
+        upazila: data.upazila,
+        hospitalName: data.hospitalName,
+        fullAddress: data.fullAddress,
+        bloodGroup: data.bloodGroup,
+        donationDate: data.donationDate,
+        donationTime: data.donationTime,
+        requestMessage: data.requestMessage,
+
+        // server control fields
+        status: 'pending', // default
+        donorName: '',
+        donorEmail: '',
+        createdAt: new Date(),
+      };
+
+      const result = await donationRequestsCollection.insertOne(
+        donationRequest
+      );
+      res.send(result);
+    });
+
     // Send a ping to confirm a successful connection
     await client.db('admin').command({ ping: 1 });
     console.log(
