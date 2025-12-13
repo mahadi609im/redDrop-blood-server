@@ -356,6 +356,21 @@ async function run() {
       }
     });
 
+    app.post('/users', async (req, res) => {
+      const user = req.body;
+
+      // Extra fields add
+      user.role = 'donor';
+      user.status = 'active';
+      user.createdAt = new Date();
+      user.bloodGroup = req.body.bloodGroup;
+      user.district = req.body.district;
+      user.upazila = req.body.upazila;
+
+      const result = await usersCollection.insertOne(user);
+      res.send(result);
+    });
+
     // Send a ping to confirm a successful connection
     await client.db('admin').command({ ping: 1 });
     console.log(
