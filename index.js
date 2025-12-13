@@ -170,6 +170,68 @@ async function run() {
       }
     });
 
+    // PATCH: Edit donation request (only allowed fields)
+    app.patch('/donationRequests/:id', verifyFBToken, async (req, res) => {
+      try {
+        const id = req.params.id;
+        const updates = req.body;
+
+        if (!ObjectId.isValid(id)) {
+          return res.status(400).send({ message: 'Invalid ID' });
+        }
+
+        const request = await donationRequestsCollection.findOne({
+          _id: new ObjectId(id),
+        });
+
+        if (!request)
+          return res.status(404).send({ message: 'Request not found' });
+
+        // Check if logged-in user is the requester or admin/volunteer
+        if (request.requesterEmail !== req.decoded_email) {
+          const user = await usersCollection.findOne({
+            email: req.decoded_email,
+          });
+          if (!user || (user.role !== 'admin' && user.role !== 'volunteer')) {
+            return res.status(403).send({ message: 'Forbidden' });
+          }
+        }
+
+        // Allowed fields to update
+        const allowedFields = [
+          'recipientName',
+          'hospitalName',
+          'district',
+          'upazila',
+          'fullAddress',
+          'bloodGroup',
+          'donationDate',
+          'donationTime',
+          'requestMessage',
+        ];
+
+        const filteredUpdates = {};
+        allowedFields.forEach(field => {
+          if (updates[field] !== undefined)
+            filteredUpdates[field] = updates[field];
+        });
+
+        if (Object.keys(filteredUpdates).length === 0) {
+          return res.status(400).send({ message: 'No valid fields to update' });
+        }
+
+        const result = await donationRequestsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: filteredUpdates }
+        );
+
+        res.send(result);
+      } catch (err) {
+        console.error(err);
+        res.status(500).send({ message: 'Server Error' });
+      }
+    });
+
     // Send a ping to confirm a successful connection
     await client.db('admin').command({ ping: 1 });
     console.log(
