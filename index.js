@@ -106,6 +106,24 @@ async function run() {
       }
     });
 
+    // 1️⃣ My Donation Requests (Donor)
+    app.get('/donationRequests/my', verifyFBToken, async (req, res) => {
+      try {
+        const email = req.decoded_email; // logged-in user's email
+        const query = { requesterEmail: email };
+
+        const cursor = donationRequestsCollection
+          .find(query)
+          .sort({ createdAt: -1 });
+        const myRequests = await cursor.toArray();
+
+        res.send(myRequests);
+      } catch (err) {
+        console.error(err);
+        res.status(500).send({ message: 'Server Error' });
+      }
+    });
+
     // Send a ping to confirm a successful connection
     await client.db('admin').command({ ping: 1 });
     console.log(
