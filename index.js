@@ -117,6 +117,13 @@ async function run() {
       res.send({ url: session.url });
     });
 
+    // get all funds (table view)
+    app.get('/funds', async (req, res) => {
+      const funds = await fundsCollection.find().sort({ fundAt: -1 }).toArray();
+
+      res.send(funds);
+    });
+
     app.get('/donors', async (req, res) => {
       const { bloodGroup, district, upazila } = req.query;
       const query = { role: 'donor' };
