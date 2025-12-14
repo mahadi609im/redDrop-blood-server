@@ -117,6 +117,48 @@ async function run() {
       res.send({ url: session.url });
     });
 
+    app.post('/funds', async (req, res) => {
+      try {
+        const { sessionId } = req.body;
+
+        if (!sessionId) {
+          return res.status(400).send({ message: 'sessionId required' });
+        }
+
+        // 🔐 Verify payment from Stripe
+        const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+        if (session.payment_status !== 'paid') {
+          return res.status(400).send({ message: 'Payment not completed' });
+        }
+
+        // 🚫 Prevent duplicate save
+        const alreadyExists = await fundsCollection.findOne({
+          transactionId: session.payment_intent,
+        });
+
+        if (alreadyExists) {
+          return res.send({ message: 'Fund already recorded' });
+        }
+
+        // 💰 Save fund
+        const fund = {
+          name: session.metadata.displayName,
+          email: session.metadata.email,
+          amount: session.amount_total / 100,
+          transactionId: session.payment_intent,
+          fundAt: new Date(),
+        };
+
+        await fundsCollection.insertOne(fund);
+
+        res.send({ success: true });
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: 'Internal server error' });
+      }
+    });
+
     // get all funds (table view)
     app.get('/funds', async (req, res) => {
       const funds = await fundsCollection.find().sort({ fundAt: -1 }).toArray();
