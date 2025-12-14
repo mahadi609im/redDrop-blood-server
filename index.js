@@ -110,8 +110,8 @@ async function run() {
           amount,
         },
 
-        success_url: `${process.env.SITE_DOMAIN}/payment-success`,
-        cancel_url: `${process.env.SITE_DOMAIN}/payment-cancelled`,
+        success_url: `${process.env.SITE_DOMAIN}/fund-success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${process.env.SITE_DOMAIN}/fund-cancelled`,
       });
 
       res.send({ url: session.url });
@@ -167,18 +167,19 @@ async function run() {
     });
 
     app.get('/funds/total', async (req, res) => {
-      const result = await fundsCollection
-        .aggregate([
-          {
-            $group: {
-              _id: null,
-              totalAmount: { $sum: '$amount' },
-            },
-          },
-        ])
-        .toArray();
+      try {
+        const totalResult = await fundsCollection.find().toArray();
 
-      res.send(result[0] || { totalAmount: 0 });
+        const totalAmount = totalResult.reduce(
+          (sum, fund) => sum + fund.amount,
+          0
+        );
+
+        res.send({ totalAmount });
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: 'Internal server error' });
+      }
     });
 
     app.get('/donors', async (req, res) => {
