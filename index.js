@@ -8,6 +8,7 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const admin = require('firebase-admin');
 
 const serviceAccount = require('./reddrop-firebase-adminsdk.json');
+const stripe = require('stripe')(process.env.STRIPE_SECRET);
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
@@ -55,6 +56,7 @@ async function run() {
     const redDropDB = client.db('redDrop');
     const donationRequestsCollection = redDropDB.collection('donationRequests');
     const usersCollection = redDropDB.collection('users');
+    const fundsCollection = redDropDB.collection('funds');
 
     const verifyAdmin = async (req, res, next) => {
       const email = req.decoded_email;
@@ -79,6 +81,41 @@ async function run() {
 
       next();
     };
+
+    // create checkout session
+    app.post('/create-checkout-session', async (req, res) => {
+      const { amount, email, displayName } = req.body;
+
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ['card'],
+        line_items: [
+          {
+            price_data: {
+              currency: 'usd',
+              unit_amount: Number(amount) * 100,
+              product_data: {
+                name: 'Blood Donation Fund',
+                description: `Donated by ${displayName}`,
+              },
+            },
+            quantity: 1,
+          },
+        ],
+        customer_email: email,
+        mode: 'payment',
+
+        metadata: {
+          displayName,
+          email,
+          amount,
+        },
+
+        success_url: `${process.env.SITE_DOMAIN}/payment-success`,
+        cancel_url: `${process.env.SITE_DOMAIN}/payment-cancelled`,
+      });
+
+      res.send({ url: session.url });
+    });
 
     app.get('/donors', async (req, res) => {
       const { bloodGroup, district, upazila } = req.query;
