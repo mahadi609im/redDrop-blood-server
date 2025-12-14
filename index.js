@@ -124,6 +124,21 @@ async function run() {
       res.send(funds);
     });
 
+    app.get('/funds/total', async (req, res) => {
+      const result = await fundsCollection
+        .aggregate([
+          {
+            $group: {
+              _id: null,
+              totalAmount: { $sum: '$amount' },
+            },
+          },
+        ])
+        .toArray();
+
+      res.send(result[0] || { totalAmount: 0 });
+    });
+
     app.get('/donors', async (req, res) => {
       const { bloodGroup, district, upazila } = req.query;
       const query = { role: 'donor' };
