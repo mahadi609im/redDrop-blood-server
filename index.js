@@ -411,7 +411,7 @@ async function run() {
     });
 
     // users collection
-    app.get('/users', async (req, res) => {
+    app.get('/users', verifyFBToken, verifyAdmin, async (req, res) => {
       const { email } = req.query;
       const query = {};
 
