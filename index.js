@@ -163,7 +163,7 @@ async function run() {
     });
 
     // get all funds (table view)
-    app.get('/funds', async (req, res) => {
+    app.get('/funds', verifyFBToken, async (req, res) => {
       const funds = await fundsCollection.find().sort({ fundAt: -1 }).toArray();
 
       res.send(funds);
