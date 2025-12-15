@@ -56,7 +56,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
     const redDropDB = client.db('redDrop');
     const donationRequestsCollection = redDropDB.collection('donationRequests');
     const usersCollection = redDropDB.collection('users');
@@ -163,13 +163,13 @@ async function run() {
     });
 
     // get all funds (table view)
-    app.get('/funds', async (req, res) => {
+    app.get('/funds', verifyFBToken, async (req, res) => {
       const funds = await fundsCollection.find().sort({ fundAt: -1 }).toArray();
 
       res.send(funds);
     });
 
-    app.get('/funds/total', async (req, res) => {
+    app.get('/funds/total', verifyFBToken, async (req, res) => {
       try {
         const totalResult = await fundsCollection.find().toArray();
 
@@ -241,7 +241,7 @@ async function run() {
     });
 
     // 3️⃣ Get single donation request by id (any logged-in user)
-    app.get('/donationRequests/:id', async (req, res) => {
+    app.get('/donationRequests/:id', verifyFBToken, async (req, res) => {
       try {
         const id = req.params.id;
 
@@ -271,7 +271,7 @@ async function run() {
     });
 
     // PATCH: Edit donation request (only allowed fields)
-    app.patch('/donationRequests/:id', verifyFBToken, async (req, res) => {
+    app.patch('/donationRequests/:id', async (req, res) => {
       try {
         const id = req.params.id;
         const updates = req.body;
@@ -331,8 +331,13 @@ async function run() {
       }
     });
 
-    app.post('/donationRequests', async (req, res) => {
+    app.post('/donationRequests', verifyFBToken, async (req, res) => {
       const data = req.body;
+
+      const user = await usersCollection.findOne({ email: req.decoded_email });
+      if (user.status === 'blocked') {
+        return res.status(403).send({ message: 'User is blocked' });
+      }
 
       const donationRequest = {
         requesterName: data.requesterName,
@@ -360,7 +365,7 @@ async function run() {
       res.send(result);
     });
 
-    app.delete('/donationRequests/:id', async (req, res) => {
+    app.delete('/donationRequests/:id', verifyFBToken, async (req, res) => {
       const id = req.params.id;
 
       const query = { _id: new ObjectId(id) };
@@ -368,50 +373,46 @@ async function run() {
       res.send(result);
     });
 
-    app.patch('/donationRequests/:id/status', async (req, res) => {
-      const id = req.params.id;
-      const { status, donor } = req.body;
+    app.patch(
+      '/donationRequests/:id/status',
+      verifyFBToken,
+      async (req, res) => {
+        const id = req.params.id;
+        const { status, donor } = req.body;
 
-      const filter = { _id: new ObjectId(id) };
+        const user = await usersCollection.findOne({
+          email: req.decoded_email,
+        });
 
-      const update = {
-        $set: { status },
-      };
+        if (!user || user.status === 'blocked') {
+          return res.status(403).send({ message: 'Forbidden' });
+        }
 
-      // যদি inprogress হলে donor info add করো
-      if (status === 'inprogress' && donor) {
-        update.$set.donor = {
-          name: donor.name,
-          email: donor.email,
-        };
+        const allowedStatuses = ['pending', 'inprogress', 'done', 'canceled'];
+        if (!allowedStatuses.includes(status)) {
+          return res.status(400).send({ message: 'Invalid status' });
+        }
+
+        const update = { $set: { status } };
+
+        if (status === 'inprogress' && donor) {
+          update.$set.donor = {
+            name: donor.name,
+            email: donor.email,
+          };
+        }
+
+        const result = await donationRequestsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          update
+        );
+
+        res.send(result);
       }
-
-      const result = await donationRequestsCollection.updateOne(filter, update);
-      res.send(result);
-    });
-
-    // Update donation request info
-    app.patch('/donationRequests/:id', async (req, res) => {
-      const id = req.params.id;
-      const updates = req.body;
-
-      const allowedStatuses = ['pending', 'inprogress', 'done', 'canceled'];
-      if (updates.status && !allowedStatuses.includes(updates.status)) {
-        return res.status(400).send({ message: 'Invalid status value' });
-      }
-
-      const filter = { _id: new ObjectId(id) };
-      const updateDoc = { $set: updates };
-
-      const result = await donationRequestsCollection.updateOne(
-        filter,
-        updateDoc
-      );
-      res.send(result);
-    });
+    );
 
     // users collection
-    app.get('/users', async (req, res) => {
+    app.get('/users', verifyFBToken, verifyAdmin, async (req, res) => {
       const { email } = req.query;
       const query = {};
 
