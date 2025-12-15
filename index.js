@@ -7,7 +7,11 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 const admin = require('firebase-admin');
 
-const serviceAccount = require('./reddrop-firebase-adminsdk.json');
+const decoded = Buffer.from(process.env.FB_SERVICE_KEY, 'base64').toString(
+  'utf8'
+);
+const serviceAccount = JSON.parse(decoded);
+
 const stripe = require('stripe')(process.env.STRIPE_SECRET);
 
 admin.initializeApp({
@@ -27,7 +31,7 @@ const verifyFBToken = async (req, res, next) => {
   try {
     const idToken = token.split(' ')[1];
     const decoded = await admin.auth().verifyIdToken(idToken);
-    console.log('decoded in the token', decoded);
+
     req.decoded_email = decoded.email;
     next();
   } catch (err) {
@@ -152,9 +156,8 @@ async function run() {
 
         await fundsCollection.insertOne(fund);
 
-        res.send({ success: true });
+        res.send({ success: true, fundInfo: fund });
       } catch (error) {
-        console.error(error);
         res.status(500).send({ message: 'Internal server error' });
       }
     });
@@ -177,7 +180,6 @@ async function run() {
 
         res.send({ totalAmount });
       } catch (error) {
-        console.error(error);
         res.status(500).send({ message: 'Internal server error' });
       }
     });
@@ -203,7 +205,6 @@ async function run() {
 
         res.send(pendingRequests);
       } catch (err) {
-        console.error(err);
         res.status(500).send({ message: 'Server Error' });
       }
     });
@@ -221,7 +222,6 @@ async function run() {
 
         res.send(myRequests);
       } catch (err) {
-        console.error(err);
         res.status(500).send({ message: 'Server Error' });
       }
     });
@@ -236,7 +236,6 @@ async function run() {
 
         res.send(allRequests);
       } catch (err) {
-        console.error(err);
         res.status(500).send({ message: 'Server Error' });
       }
     });
@@ -267,7 +266,6 @@ async function run() {
 
         res.send(request);
       } catch (err) {
-        console.error(err);
         res.status(500).send({ message: 'Server Error' });
       }
     });
@@ -329,7 +327,6 @@ async function run() {
 
         res.send(result);
       } catch (err) {
-        console.error(err);
         res.status(500).send({ message: 'Server Error' });
       }
     });
@@ -453,7 +450,6 @@ async function run() {
 
         res.send({ status: user.status || 'active' }); // default active
       } catch (err) {
-        console.error(err);
         res.status(500).send({ message: 'Server error' });
       }
     });
@@ -502,7 +498,6 @@ async function run() {
         const updatedUser = await usersCollection.findOne({ email: userEmail });
         res.json(updatedUser);
       } catch (error) {
-        console.error('Profile update error:', error);
         res.status(500).json({ message: 'Server error' });
       }
     });
@@ -527,7 +522,6 @@ async function run() {
           });
           res.json(updatedUser);
         } catch (err) {
-          console.error(err);
           res.status(500).json({ message: 'Server Error' });
         }
       }
@@ -554,17 +548,16 @@ async function run() {
           });
           res.json(updatedUser);
         } catch (err) {
-          console.error(err);
           res.status(500).json({ message: 'Server Error' });
         }
       }
     );
 
     // Send a ping to confirm a successful connection
-    await client.db('admin').command({ ping: 1 });
-    console.log(
-      'Pinged your deployment. You successfully connected to MongoDB!'
-    );
+    // await client.db('admin').command({ ping: 1 });
+    // console.log(
+    //   'Pinged your deployment. You successfully connected to MongoDB!'
+    // );
   } finally {
     // Ensures that the client will close when you finish/error
     //  await client.close();
