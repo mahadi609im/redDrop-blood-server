@@ -368,27 +368,43 @@ async function run() {
       res.send(result);
     });
 
-    app.patch('/donationRequests/:id/status', async (req, res) => {
-      const id = req.params.id;
-      const { status, donor } = req.body;
+    app.patch(
+      '/donationRequests/:id/status',
+      verifyFBToken,
+      async (req, res) => {
+        const id = req.params.id;
+        const { status, donor } = req.body;
 
-      const filter = { _id: new ObjectId(id) };
+        const user = await usersCollection.findOne({
+          email: req.decoded_email,
+        });
 
-      const update = {
-        $set: { status },
-      };
+        if (!user || user.status === 'blocked') {
+          return res.status(403).send({ message: 'Forbidden' });
+        }
 
-      // যদি inprogress হলে donor info add করো
-      if (status === 'inprogress' && donor) {
-        update.$set.donor = {
-          name: donor.name,
-          email: donor.email,
-        };
+        const allowedStatuses = ['pending', 'inprogress', 'done', 'canceled'];
+        if (!allowedStatuses.includes(status)) {
+          return res.status(400).send({ message: 'Invalid status' });
+        }
+
+        const update = { $set: { status } };
+
+        if (status === 'inprogress' && donor) {
+          update.$set.donor = {
+            name: donor.name,
+            email: donor.email,
+          };
+        }
+
+        const result = await donationRequestsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          update
+        );
+
+        res.send(result);
       }
-
-      const result = await donationRequestsCollection.updateOne(filter, update);
-      res.send(result);
-    });
+    );
 
     // Update donation request info
     app.patch('/donationRequests/:id', async (req, res) => {
