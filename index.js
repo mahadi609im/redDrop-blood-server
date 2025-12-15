@@ -163,7 +163,7 @@ async function run() {
     });
 
     // get all funds (table view)
-    app.get('/funds', verifyFBToken, async (req, res) => {
+    app.get('/funds', async (req, res) => {
       const funds = await fundsCollection.find().sort({ fundAt: -1 }).toArray();
 
       res.send(funds);
@@ -241,7 +241,7 @@ async function run() {
     });
 
     // 3️⃣ Get single donation request by id (any logged-in user)
-    app.get('/donationRequests/:id', verifyFBToken, async (req, res) => {
+    app.get('/donationRequests/:id', async (req, res) => {
       try {
         const id = req.params.id;
 
@@ -331,7 +331,7 @@ async function run() {
       }
     });
 
-    app.post('/donationRequests', verifyFBToken, async (req, res) => {
+    app.post('/donationRequests', async (req, res) => {
       const data = req.body;
 
       const donationRequest = {
@@ -360,7 +360,7 @@ async function run() {
       res.send(result);
     });
 
-    app.delete('/donationRequests/:id', verifyFBToken, async (req, res) => {
+    app.delete('/donationRequests/:id', async (req, res) => {
       const id = req.params.id;
 
       const query = { _id: new ObjectId(id) };
@@ -368,46 +368,30 @@ async function run() {
       res.send(result);
     });
 
-    app.patch(
-      '/donationRequests/:id/status',
-      verifyFBToken,
-      async (req, res) => {
-        const id = req.params.id;
-        const { status, donor } = req.body;
+    app.patch('/donationRequests/:id/status', async (req, res) => {
+      const id = req.params.id;
+      const { status, donor } = req.body;
 
-        const user = await usersCollection.findOne({
-          email: req.decoded_email,
-        });
+      const filter = { _id: new ObjectId(id) };
 
-        if (!user || user.status === 'blocked') {
-          return res.status(403).send({ message: 'Forbidden' });
-        }
+      const update = {
+        $set: { status },
+      };
 
-        const allowedStatuses = ['pending', 'inprogress', 'done', 'canceled'];
-        if (!allowedStatuses.includes(status)) {
-          return res.status(400).send({ message: 'Invalid status' });
-        }
-
-        const update = { $set: { status } };
-
-        if (status === 'inprogress' && donor) {
-          update.$set.donor = {
-            name: donor.name,
-            email: donor.email,
-          };
-        }
-
-        const result = await donationRequestsCollection.updateOne(
-          { _id: new ObjectId(id) },
-          update
-        );
-
-        res.send(result);
+      // যদি inprogress হলে donor info add করো
+      if (status === 'inprogress' && donor) {
+        update.$set.donor = {
+          name: donor.name,
+          email: donor.email,
+        };
       }
-    );
+
+      const result = await donationRequestsCollection.updateOne(filter, update);
+      res.send(result);
+    });
 
     // Update donation request info
-    app.patch('/donationRequests/:id', verifyFBToken, async (req, res) => {
+    app.patch('/donationRequests/:id', async (req, res) => {
       const id = req.params.id;
       const updates = req.body;
 
@@ -427,7 +411,7 @@ async function run() {
     });
 
     // users collection
-    app.get('/users', verifyFBToken, verifyAdmin, async (req, res) => {
+    app.get('/users', async (req, res) => {
       const { email } = req.query;
       const query = {};
 
@@ -446,20 +430,15 @@ async function run() {
 
     // app.get('/users/:id', async (req, res) => {});
 
-    app.get(
-      '/users/:email/role',
-      verifyFBToken,
-      verifyAdmin,
-      async (req, res) => {
-        const email = req.params.email;
-        const query = { email };
-        const user = await usersCollection.findOne(query);
-        res.send({ role: user?.role || 'donor' });
-      }
-    );
+    app.get('/users/:email/role', async (req, res) => {
+      const email = req.params.email;
+      const query = { email };
+      const user = await usersCollection.findOne(query);
+      res.send({ role: user?.role || 'donor' });
+    });
 
     // GET /users/:email/status
-    app.get('/users/:email/status', verifyFBToken, async (req, res) => {
+    app.get('/users/:email/status', async (req, res) => {
       try {
         const email = req.params.email;
         const query = { email };
@@ -475,7 +454,7 @@ async function run() {
       }
     });
 
-    app.post('/users', verifyFBToken, verifyAdmin, async (req, res) => {
+    app.post('/users', async (req, res) => {
       const user = req.body;
 
       // Extra fields add
